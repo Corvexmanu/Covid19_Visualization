@@ -11,90 +11,53 @@ import plotly.graph_objs as go
 import re
 import numpy as np
 import plotly.express as px
-import json
 import math
 import pandas as pd
 from datetime import datetime
 from datetime import timedelta  
 
 
-# Set up the app
-app = dash.Dash(__name__)
-server = app.server
-
 global country_df, measures_df,geojson_layer
-global dict_countries
+global dict_countries, mapbox_access_token
 
+mapbox_access_token = "pk.eyJ1IjoiY29ydmV4IiwiYSI6ImNrODlvc2VzOTA4eHEzbW94d3RqMW13OWwifQ.4dmKFuWwbs6mtpBRbctJwA"
+
+###########################################################################
+    # Execute Data Processing
+###########################################################################
+
+#Get initial datasets
 country_df = create_data()
-
 measures_data_df = create_measures() 
 
+#Get variables to be used in Visualization
 confirmedCases, deathsCases, recoveredCases = Extract_three_main_trends(country_df)
-
 plusPercentNum1, df_confirmed = get_confirmed_dataset(country_df)
 plusPercentNum2, df_recovered = get_recovered_dataset(country_df)
 plusPercentNum3, df_deaths = get_deaths_dataset(country_df)
 plusPercentNum4, df_remaining = get_remaining_dataset(country_df)
-
-
-# Create data table to show in app
-# Generate sum values for Country/Region level
-dfCase = country_df.groupby(by='Country/Region', sort=False).sum().reset_index()
-dfCase = dfCase.sort_values(by=['Confirmed'], ascending=False).reset_index(drop=True)
-
-# As lat and lon also underwent sum(), which is not desired, remove from this table.
-dfCase = dfCase.drop(columns=['Latitude', 'Longitude'])
-
-# Grep lat and lon by the first instance to represent its Country/Region
-dfGPS = country_df.groupby(by='Country/Region', sort=False).first().reset_index()
-dfGPS = dfGPS[['Country/Region', 'Latitude', 'Longitude']]
-
-# Merge two dataframes
-dfSum = pd.merge(dfCase, dfGPS, how='inner', on='Country/Region')
-dfSum = dfSum.replace({'Country/Region': 'China'}, 'Mainland China')
-dfSum['Active'] = dfSum['Confirmed'] - dfSum['Recovered'] - dfSum['Deaths']
-dfSum['Death rate'] = dfSum['Deaths']/dfSum['Confirmed']
-
-# Rearrange columns to correspond to the number plate order
-dfSum = dfSum[['Country/Region', 'Active','Confirmed', 'Recovered', 'Deaths', 'Death rate', 'Latitude', 'Longitude']]
-
-# Sort value based on Active cases and then Confirmed cases
-dfSum = dfSum.sort_values(by=['Active', 'Confirmed'], ascending=False).reset_index(drop=True)
-
-# Set row ids pass to selected_row_ids
-dfSum['id'] = dfSum['Country/Region']
-dfSum.set_index('id', inplace=True, drop=False)
+dfCase,dfGPS,dfSum = get_df_CGS(country_df)
 
 # Create tables for tabs
 CNTable = make_country_table('China',country_df)
 AUSTable = make_country_table('Australia',country_df)
 USTable = make_country_table('United States of America',country_df)
+USTable = USTable.dropna(subset=['Province/State'])
 CANTable = make_country_table('Canada',country_df)
+CANTable = CANTable.dropna(subset=['Province/State'])
 EuroTable = make_europe_table(country_df)
 
-# Remove dummy row of recovered case number in USTable
-USTable = USTable.dropna(subset=['Province/State'])
+#Get days Outbreak
+daysOutbreak = get_daysOutbreak(df_confirmed)
 
-# Remove dummy row of recovered case number in USTable
-CANTable = CANTable.dropna(subset=['Province/State'])
+###########################################################################
+    # Set Up Dash App 
+    # Define HTML structure
+###########################################################################
 
-# Save numbers into variables to use in the app
-latestDate_1 = datetime.strptime(df_confirmed['date_file'][0],'%m/%d/%Y') 
-latestDate = datetime.strftime(latestDate_1, '%b %d, %Y %H:%M AEDT')
-
-secondLastDate_1 = datetime.strptime(df_confirmed['date_file'][1],'%m/%d/%Y') 
-secondLastDate = datetime.strftime(secondLastDate_1, '%b %d')
-
-daysOutbreak = (latestDate_1 - datetime.strptime('12/31/2019', '%m/%d/%Y')).days
-
-dict_countries = create_dict_list_of_countries(country_df)
-
-dict_data_types = [{'value': "Confirmed", 'label': "Confirmed"},
-                    {'value': "Deaths", 'label': "Deaths"},
-                    {'value': "Recovered", 'label': "Recovered"}]
-
+app = dash.Dash(__name__)
+server = app.server
 app.config['suppress_callback_exceptions'] = True
-
 app.layout = html.Div(style={'backgroundColor': '#151515'},
     children=[
         html.Div(id="number-plate",
@@ -166,21 +129,6 @@ app.layout = html.Div(style={'backgroundColor': '#151515'},
                                   dcc.Graph(
                                       id='datatable-interact-map',
                                       style={'height': '800px'},),
-                                #   dcc.Tabs(
-                                #       id="tabs-plots", 
-                                #       value='Cumulative Cases',
-                                #       parent_className='custom-tabs',
-                                #       className='custom-tabs-container', 
-                                #       children=[dcc.Tab(className='custom-tab',
-                                #                         selected_className='custom-tab--selected',
-                                #                         label='Cumulative Cases', 
-                                #                         value='Cumulative Cases'),
-                                #                 dcc.Tab(className='custom-tab',
-                                #                         selected_className='custom-tab--selected',
-                                #                         label='Confirmed Case Trajectories', 
-                                #                         value='Confirmed Case Trajectories'),
-                                #       ]
-                                #   ),
                                   html.Div(id='tabs-content-plots')])]),
 
         html.Div(style={'width': '100%', 'display': 'inline-block', 'verticalAlign': 'top'},
@@ -267,7 +215,7 @@ app.layout = html.Div(style={'backgroundColor': '#151515'},
                                   html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
                                                  'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
                                                children='Select Countries to compare'),
-                                          dcc.Dropdown(id='country-dropdown', options=dict_countries, multi=True, value = ["World","Australia"])]),
+                                          dcc.Dropdown(id='country-dropdown', options=create_dict_list_of_countries(country_df), multi=True, value = ["World","Australia"])]),
                     html.Div(
                          style={'width': '32.79%', 'display': 'inline-block',
                              'marginRight': '.8%', 'verticalAlign': 'top'},
@@ -275,7 +223,7 @@ app.layout = html.Div(style={'backgroundColor': '#151515'},
                                   html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
                                                  'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
                                                children='Select Data type to compare'),
-                                          dcc.Dropdown(id='data-types-dropdown', options=dict_data_types, multi=False, value = "Confirmed")])                                         
+                                          dcc.Dropdown(id='data-types-dropdown', options=get_dict_data_types(), multi=False, value = "Confirmed")])                                         
                                           
                                           ]),
         html.Div(
@@ -304,25 +252,28 @@ app.layout = html.Div(style={'backgroundColor': '#151515'},
         
         ])
 
+
+###########################################################################
+    # Set Up figure methods
+###########################################################################
+
 @app.callback(Output('country-like-trend', 'figure'), [Input('country-dropdown', 'value'), Input("data-types-dropdown", "value")])
 def update_graph(selected_dropdown_value_country, selected_dropdown_value_dataType):
 
-    Countries = selected_dropdown_value_country
-    type_data = selected_dropdown_value_dataType
-
+    #Get initial data required
     length = {}
-    for country in Countries:
+    for country in selected_dropdown_value_country:
         data_country = filter_country(country_df,country)
-        length[country] = len(data_country)
-
+        length[country] = len(data_country)     
     Countries = [k for (k,v) in sorted(length.items(), key=lambda x: x[1])]
-    Lines = [go.Scatter(x = np.arange(len(list(filter_country(country_df,country).index))), 
-                                y = filter_country(country_df,country)[type_data], 
-                                mode = "markers+lines", 
-                                name = country) for country in Countries]
+
+    # Create Output Figure
     figure = {
-            'data' : Lines,
-            'layout' : go.Layout(title = "COVID-19 {} Cases".format(type_data), xaxis = {'title': 'Days'}, yaxis = {'title': 'People'})
+            'data' : [go.Scatter(x = np.arange(len(list(filter_country(country_df,country).index))), 
+                                y = filter_country(country_df,country)[selected_dropdown_value_dataType], 
+                                mode = "markers+lines", 
+                                name = country) for country in Countries],
+            'layout' : go.Layout(title = "COVID-19 {} Cases".format(selected_dropdown_value_dataType), xaxis = {'title': 'Days'}, yaxis = {'title': 'People'})
         }
 
     return figure
@@ -330,43 +281,21 @@ def update_graph(selected_dropdown_value_country, selected_dropdown_value_dataTy
 @app.callback(Output('country-like-world', 'figure'), [Input('country-dropdown', 'value'), Input("data-types-dropdown", "value")])
 def update_Australia(selected_dropdown_value_country,selected_dropdown_value_dataType):   
 
-    Countries = selected_dropdown_value_country
-    type_data = selected_dropdown_value_dataType
+    #Get initial data required  
+    data = get_data_coordinates(country_df) 
 
-    mapbox_access_token = "pk.eyJ1IjoiY29ydmV4IiwiYSI6ImNrODlvc2VzOTA4eHEzbW94d3RqMW13OWwifQ.4dmKFuWwbs6mtpBRbctJwA"
-
-    data  = country_df.copy()
-    data = data.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
-    data = data.sort_values(by=['date_file'], ascending = False ).reset_index(drop=True)
-    data = data[data['date_file'] == data['date_file'][0]]
-
-    repeated_names = {
-        "Mainland China":"China",
-        "US": 'United States of America',
-        "UK": 'United Kingdom'
-    }
-    coordinates = pd.read_csv("./data/coordinates.csv")
-    coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
-    coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
-    data = pd.merge(data,coordinates, on=['Province/State',"Country/Region"])
-    data.dropna(inplace=True) 
-
+    # Generate a list for hover text display
     textList = []
     for area, region in zip(data['Province/State'], data['Country/Region']):
-        if type(area) is str:
-            if region == "Hong Kong" or region == "Macau" or region == "Taiwan":
-                textList.append(area)
-            else:
-                textList.append(area+', '+region)
-        else:
-            textList.append(region)
+        textList.append(area+', '+region)
 
+    # Generate a list for color gradient display
     colorList = []
-
     for comfirmed, recovered, deaths in zip(data['Confirmed'], data['Recovered'], data['Deaths']):
         remaining = comfirmed - deaths - recovered
         colorList.append(remaining)
 
+    # Create Output Figure
     figure = go.Figure(go.Scattermapbox(
         lat=data['Latitude'],
         lon=data['Longitude'],
@@ -446,79 +375,20 @@ def update_figures(value, derived_virtual_selected_rows, selected_row_ids,
   US_derived_virtual_selected_rows, US_selected_row_ids
   ):
 
-    data  = country_df.copy()
-    data = data.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
-    data = data.sort_values(by=['date_file'], ascending = False ).reset_index(drop=True)
-    data = data[data['date_file'] == data['date_file'][0]]
-
-    repeated_names = {
-        "Mainland China":"China",
-        "US": 'United States of America',
-        "UK": 'United Kingdom'
-    }
-    coordinates = pd.read_csv("./data/coordinates.csv")
-    coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
-    coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
-    data = pd.merge(data,coordinates, on=['Province/State',"Country/Region"])
-    data.dropna(inplace=True) 
-    
-
+    #Get initial data required
+    data = get_data_coordinates(country_df) 
     if value == 'The World':
-      if derived_virtual_selected_rows is None:
-        derived_virtual_selected_rows = []
-
-      dff = dfSum
-      latitude = 14.056159 if len(derived_virtual_selected_rows) == 0 else dff.loc[selected_row_ids[0]].Latitude
-      longitude = 6.395626 if len(derived_virtual_selected_rows) == 0 else dff.loc[selected_row_ids[0]].Longitude
-      zoom = 1.02 if len(derived_virtual_selected_rows) == 0 else 4
-
+        dff,latitude,longitude,zoom = get_data_world(dfSum,derived_virtual_selected_rows, selected_row_ids)
     elif value == 'Australia':
-      if Australia_derived_virtual_selected_rows is None:
-        Australia_derived_virtual_selected_rows = []
-
-      dff = AUSTable
-      latitude = -25.931850 if len(Australia_derived_virtual_selected_rows) == 0 else dff.loc[Australia_selected_row_ids[0]].Latitude
-      longitude = 134.024931 if len(Australia_derived_virtual_selected_rows) == 0 else dff.loc[Australia_selected_row_ids[0]].Longitude
-      zoom = 3 if len(Australia_derived_virtual_selected_rows) == 0 else 12
-
+        dff,latitude,longitude,zoom = get_data_Australia(AUSTable,Australia_derived_virtual_selected_rows, Australia_selected_row_ids)
     elif value == 'Canada':
-      if Canada_derived_virtual_selected_rows is None:
-        Canada_derived_virtual_selected_rows = []
-
-      dff = CANTable
-      latitude = 55.474012 if len(Canada_derived_virtual_selected_rows) == 0 else dff.loc[Canada_selected_row_ids[0]].Latitude
-      longitude = -97.344913 if len(Canada_derived_virtual_selected_rows) == 0 else dff.loc[Canada_selected_row_ids[0]].Longitude
-      zoom = 3 if len(Canada_derived_virtual_selected_rows) == 0 else 12
-
+        dff,latitude,longitude,zoom = get_data_Canada(CANTable,Canada_derived_virtual_selected_rows, Canada_selected_row_ids)
     elif value == 'Mainland China':
-      if CHN_derived_virtual_selected_rows is None:
-        CHN_derived_virtual_selected_rows = []
-
-      dff = CNTable
-      latitude = 33.471197 if len(CHN_derived_virtual_selected_rows) == 0 else dff.loc[CHN_selected_row_ids[0]].Latitude
-      longitude = 106.206780 if len(CHN_derived_virtual_selected_rows) == 0 else dff.loc[CHN_selected_row_ids[0]].Longitude
-      zoom = 2.5 if len(CHN_derived_virtual_selected_rows) == 0 else 12
-
+        dff,latitude,longitude,zoom = get_data_Mainland_China(CNTable,CHN_derived_virtual_selected_rows, CHN_selected_row_ids)
     elif value == 'United States':
-      if US_derived_virtual_selected_rows is None:
-        US_derived_virtual_selected_rows = []
-
-      dff = USTable
-      latitude = 40.022092 if len(US_derived_virtual_selected_rows) == 0 else dff.loc[US_selected_row_ids[0]].Latitude
-      longitude = -98.828101 if len(US_derived_virtual_selected_rows) == 0 else dff.loc[US_selected_row_ids[0]].Longitude
-      zoom = 3 if len(US_derived_virtual_selected_rows) == 0 else 12
-
+        dff,latitude,longitude,zoom = get_data_United_States(USTable,US_derived_virtual_selected_rows, US_selected_row_ids)
     elif value == 'Europe':
-      if Europe_derived_virtual_selected_rows is None:
-        Europe_derived_virtual_selected_rows = []
-
-      dff = EuroTable
-      latitude = 52.405175 if len(Europe_derived_virtual_selected_rows) == 0 else dff.loc[Europe_selected_row_ids[0]].Latitude
-      longitude = 11.403996 if len(Europe_derived_virtual_selected_rows) == 0 else dff.loc[Europe_selected_row_ids[0]].Longitude
-      zoom = 2.5 if len(Europe_derived_virtual_selected_rows) == 0 else 12
-
-
-    mapbox_access_token = "pk.eyJ1IjoicGxvdGx5bWFwYm94IiwiYSI6ImNqdnBvNDMyaTAxYzkzeW5ubWdpZ2VjbmMifQ.TXcBE-xg9BFdV2ocecc_7g"
+        dff,latitude,longitude,zoom = get_data_Europe(EuroTable,Europe_derived_virtual_selected_rows, Europe_selected_row_ids)
 
     # Generate a list for hover text display
     textList = []
@@ -534,11 +404,11 @@ def update_figures(value, derived_virtual_selected_rows, selected_row_ids,
 
     # Generate a list for color gradient display
     colorList = []
-
     for comfirmed, recovered, deaths in zip(data['Confirmed'], data['Recovered'], data['Deaths']):
         remaining = comfirmed - deaths - recovered
         colorList.append(remaining)
 
+    #Create Output Figure 
     fig2 = go.Figure(go.Scattermapbox(
         lat=data['Latitude'],
         lon=data['Longitude'],

@@ -103,6 +103,12 @@ def map_date_measures(cases_countries_df,measures_countries_df,dates):
     measures_countries_df.set_index('Date',inplace=True)
     return measures_countries_df
 
+def get_dict_data_types():
+    dict_data_types = [{'value': "Confirmed", 'label': "Confirmed"},
+                    {'value': "Deaths", 'label': "Deaths"},
+                    {'value': "Recovered", 'label': "Recovered"}]
+    return dict_data_types
+
 def make_country_table(countryName, country_df):
     '''This is the function for building df for Province/State of a given country'''
 
@@ -255,3 +261,132 @@ def get_remaining_dataset(country_df):
     plusPercentNum4 = df_remaining['plusPercentNum'][0]
 
     return plusPercentNum4, df_remaining
+
+def get_df_CGS(country_df):
+
+    # Create data table to show in app
+    # Generate sum values for Country/Region level
+    dfCase = country_df.groupby(by='Country/Region', sort=False).sum().reset_index()
+    dfCase = dfCase.sort_values(by=['Confirmed'], ascending=False).reset_index(drop=True)
+
+    # As lat and lon also underwent sum(), which is not desired, remove from this table.
+    dfCase = dfCase.drop(columns=['Latitude', 'Longitude'])
+
+    # Grep lat and lon by the first instance to represent its Country/Region
+    dfGPS = country_df.groupby(by='Country/Region', sort=False).first().reset_index()
+    dfGPS = dfGPS[['Country/Region', 'Latitude', 'Longitude']]
+
+    # Merge two dataframes
+    dfSum = pd.merge(dfCase, dfGPS, how='inner', on='Country/Region')
+    dfSum = dfSum.replace({'Country/Region': 'China'}, 'Mainland China')
+    dfSum['Active'] = dfSum['Confirmed'] - dfSum['Recovered'] - dfSum['Deaths']
+    dfSum['Death rate'] = dfSum['Deaths']/dfSum['Confirmed']
+
+    # Rearrange columns to correspond to the number plate order
+    dfSum = dfSum[['Country/Region', 'Active','Confirmed', 'Recovered', 'Deaths', 'Death rate', 'Latitude', 'Longitude']]
+
+    # Sort value based on Active cases and then Confirmed cases
+    dfSum = dfSum.sort_values(by=['Active', 'Confirmed'], ascending=False).reset_index(drop=True)
+
+    # Set row ids pass to selected_row_ids
+    dfSum['id'] = dfSum['Country/Region']
+    dfSum.set_index('id', inplace=True, drop=False)
+
+    return dfCase,dfGPS,dfSum
+
+def get_daysOutbreak(df_confirmed):
+
+    # Save numbers into variables to use in the app
+    latestDate_1 = datetime.strptime(df_confirmed['date_file'][0],'%m/%d/%Y') 
+    latestDate = datetime.strftime(latestDate_1, '%b %d, %Y %H:%M AEDT')
+    secondLastDate_1 = datetime.strptime(df_confirmed['date_file'][1],'%m/%d/%Y') 
+    secondLastDate = datetime.strftime(secondLastDate_1, '%b %d')
+    daysOutbreak = (latestDate_1 - datetime.strptime('12/31/2019', '%m/%d/%Y')).days
+
+    return daysOutbreak
+
+def get_data_coordinates(country_df):
+
+    coordinates = pd.read_csv("./data/coordinates.csv")
+    state_names = {
+        "Mainland China":"China",
+        "US": 'United States of America',
+        "UK": 'United Kingdom'
+    }
+    coordinates['Country/Region'] = coordinates['Country/Region'].map(state_names).fillna(coordinates['Country/Region'])
+    coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
+
+    data = country_df.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
+    data = data.sort_values(by=['date_file'], ascending = False ).reset_index(drop=True)
+    data = data[data['date_file'] == data['date_file'][0]]    
+
+    data = pd.merge(data,coordinates, on=['Province/State',"Country/Region"])
+    data.dropna(inplace=True) 
+
+    return data
+
+def get_data_world(dfSum,derived_virtual_selected_rows,selected_row_ids):
+
+    if derived_virtual_selected_rows is None:
+        derived_virtual_selected_rows = []
+    dff = dfSum
+    latitude = 14.056159 if len(derived_virtual_selected_rows) == 0 else dff.loc[selected_row_ids[0]].Latitude
+    longitude = 6.395626 if len(derived_virtual_selected_rows) == 0 else dff.loc[selected_row_ids[0]].Longitude
+    zoom = 1.02 if len(derived_virtual_selected_rows) == 0 else 4
+
+    return dff,latitude,longitude,zoom
+
+def get_data_Australia(AUSTable,Australia_derived_virtual_selected_rows, Australia_selected_row_ids):
+
+    if Australia_derived_virtual_selected_rows is None:
+        Australia_derived_virtual_selected_rows = []
+    dff = AUSTable
+    latitude = -25.931850 if len(Australia_derived_virtual_selected_rows) == 0 else dff.loc[Australia_selected_row_ids[0]].Latitude
+    longitude = 134.024931 if len(Australia_derived_virtual_selected_rows) == 0 else dff.loc[Australia_selected_row_ids[0]].Longitude
+    zoom = 3 if len(Australia_derived_virtual_selected_rows) == 0 else 12
+
+    return dff,latitude,longitude,zoom
+
+def get_data_Canada(CANTable,Canada_derived_virtual_selected_rows, Canada_selected_row_ids):
+    
+    if Canada_derived_virtual_selected_rows is None:
+        Canada_derived_virtual_selected_rows = []
+    dff = CANTable
+    latitude = 55.474012 if len(Canada_derived_virtual_selected_rows) == 0 else dff.loc[Canada_selected_row_ids[0]].Latitude
+    longitude = -97.344913 if len(Canada_derived_virtual_selected_rows) == 0 else dff.loc[Canada_selected_row_ids[0]].Longitude
+    zoom = 3 if len(Canada_derived_virtual_selected_rows) == 0 else 12
+
+    return dff,latitude,longitude,zoom
+
+def get_data_Mainland_China(CNTable,CHN_derived_virtual_selected_rows, CHN_selected_row_ids):
+    
+    if CHN_derived_virtual_selected_rows is None:
+        CHN_derived_virtual_selected_rows = []
+    dff = CNTable
+    latitude = 33.471197 if len(CHN_derived_virtual_selected_rows) == 0 else dff.loc[CHN_selected_row_ids[0]].Latitude
+    longitude = 106.206780 if len(CHN_derived_virtual_selected_rows) == 0 else dff.loc[CHN_selected_row_ids[0]].Longitude
+    zoom = 2.5 if len(CHN_derived_virtual_selected_rows) == 0 else 12
+
+    return dff,latitude,longitude,zoom
+
+def get_data_United_States(USTable,US_derived_virtual_selected_rows, US_selected_row_ids):
+
+    if US_derived_virtual_selected_rows is None:
+        US_derived_virtual_selected_rows = []
+    dff = USTable
+    latitude = 40.022092 if len(US_derived_virtual_selected_rows) == 0 else dff.loc[US_selected_row_ids[0]].Latitude
+    longitude = -98.828101 if len(US_derived_virtual_selected_rows) == 0 else dff.loc[US_selected_row_ids[0]].Longitude
+    zoom = 3 if len(US_derived_virtual_selected_rows) == 0 else 12
+
+    return dff,latitude,longitude,zoom
+
+def get_data_Europe(EuroTable,Europe_derived_virtual_selected_rows, Europe_selected_row_ids):
+    
+    if Europe_derived_virtual_selected_rows is None:
+        Europe_derived_virtual_selected_rows = []
+    dff = EuroTable
+    latitude = 52.405175 if len(Europe_derived_virtual_selected_rows) == 0 else dff.loc[Europe_selected_row_ids[0]].Latitude
+    longitude = 11.403996 if len(Europe_derived_virtual_selected_rows) == 0 else dff.loc[Europe_selected_row_ids[0]].Longitude
+    zoom = 2.5 if len(Europe_derived_virtual_selected_rows) == 0 else 12
+    
+    return dff,latitude,longitude,zoom
