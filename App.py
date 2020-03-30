@@ -1,6 +1,7 @@
-from Analysis import create_data, filter_country, generate_multitrend,generate_onetrend,filter_measures,create_measures
-import dash
+from Data_Processing import *
+from Map_Generation import make_dcc_country_tab
 from dash.dependencies import Input, Output
+import dash
 import dash_table
 import dash_table.FormatTemplate as FormatTemplate
 import dash_core_components as dcc
@@ -24,193 +25,28 @@ server = app.server
 global country_df, measures_df,geojson_layer
 global dict_countries
 
-def make_country_table(countryName):
-    '''This is the function for building df for Province/State of a given country'''
-    countryTable = country_df[country_df['Country/Region'] == countryName]
-
-    countryTable = countryTable.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
-    countryTable = countryTable.sort_values(by=['date_file'])
-    countryTable.drop_duplicates(subset = ['Province/State','Country/Region'], keep = 'last', inplace = True)
-
-    repeated_names = {
-        "Mainland China":"China",
-        "US": 'United States of America',
-        "UK": 'United Kingdom'
-    }
-    coordinates = pd.read_csv("./data/coordinates.csv")
-    coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
-    coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
-    coordinates = coordinates[coordinates['Country/Region'] == countryName]
-    
-    countryTable = pd.merge(countryTable,coordinates, on=['Province/State','Country/Region'])
-
-
-    # Suppress SettingWithCopyWarning
-    pd.options.mode.chained_assignment = None
-    countryTable['Active'] = countryTable['Confirmed'] - countryTable['Recovered'] - countryTable['Deaths']
-    countryTable['Death rate'] = countryTable['Deaths']/countryTable['Confirmed']
-    countryTable = countryTable[['Province/State', 'Active', 'Confirmed', 'Recovered', 'Deaths', 'Death rate', 'Latitude', 'Longitude']]
-    countryTable = countryTable.sort_values(
-        by=['Active', 'Confirmed'], ascending=False).reset_index(drop=True)
-    # Set row ids pass to selected_row_ids
-    countryTable['id'] = countryTable['Province/State']
-    countryTable.set_index('id', inplace=True, drop=False)
-    # Turn on SettingWithCopyWarning
-    pd.options.mode.chained_assignment = 'warn'
-    return countryTable
-
-def make_europe_table(europe_list):
-
-    '''This is the function for building df for Europe countries'''
-    europe_table = country_df.loc[country_df['Country/Region'].isin(europe_list)]
-
-    europe_table = europe_table.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
-    europe_table = europe_table.sort_values(by=['date_file'])
-    europe_table.drop_duplicates(subset = ['Province/State','Country/Region'], keep = 'last', inplace = True)
-    repeated_names = {
-        "Mainland China":"China",
-        "US": 'United States of America',
-        "UK": 'United Kingdom'
-    }
-    coordinates = pd.read_csv("./data/coordinates.csv")
-    coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
-    coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
-    coordinates = coordinates[coordinates['Country/Region'].isin(europe_list)]    
-    europe_table = pd.merge(europe_table,coordinates, on=['Province/State','Country/Region'])
-
-    # Suppress SettingWithCopyWarning
-    pd.options.mode.chained_assignment = None
-    europe_table['Active'] = europe_table['Confirmed'] - europe_table['Recovered'] - europe_table['Deaths']
-    europe_table['Death rate'] = europe_table['Deaths']/europe_table['Confirmed']
-    europe_table = europe_table[['Country/Region', 'Active', 'Confirmed', 'Recovered', 'Deaths', 'Death rate', 'Latitude', 'Longitude']]
-    europe_table = europe_table.sort_values(
-            by=['Active', 'Confirmed'], ascending=False).reset_index(drop=True)
-    # Set row ids pass to selected_row_ids
-    europe_table['id'] = europe_table['Country/Region']
-    europe_table.set_index('id', inplace=True, drop=False)
-    # Turn on SettingWithCopyWarning
-    pd.options.mode.chained_assignment = 'warn'
-    return europe_table
-
-def make_dcc_country_tab(countryName, dataframe):
-    '''This is for generating tab component for country table'''
-    return dcc.Tab(label=countryName,
-            value=countryName,
-            className='custom-tab',
-            selected_className='custom-tab--selected',
-            children=[dash_table.DataTable(
-                    id='datatable-interact-location-{}'.format(countryName),
-                    # Don't show coordinates
-                    columns=[{"name": i, "id": i, "type": "numeric","format": FormatTemplate.percentage(2)}
-                             if i == 'Death rate' else {"name": i, "id": i}
-                             for i in dataframe.columns[0:6]],
-                    # But still store coordinates in the table for interactivity
-                    data=dataframe.to_dict("rows"),
-                    row_selectable="single" if countryName != 'Schengen' else False,
-                    sort_action="native",
-                    style_as_list_view=True,
-                    style_cell={'font_family': 'Arial',
-                                  'font_size': '1.1rem',
-                                  'padding': '.1rem',
-                                  'backgroundColor': '#f4f4f2', },
-                    fixed_rows={'headers': True, 'data': 0},
-                    style_table={'minHeight': '800px',
-                                 'height': '800px',
-                                 'maxHeight': '800px',
-                                 #'overflowX': 'scroll'
-                                 },
-                    style_header={'backgroundColor': '#f4f4f2',
-                                    'fontWeight': 'bold'},
-                    style_cell_conditional=[{'if': {'column_id': 'Province/State'}, 'width': '26%'},
-                                            {'if': {'column_id': 'Country/Region'}, 'width': '26%'},
-                                            {'if': {'column_id': 'Active'}, 'width': '14.2%'},
-                                            {'if': {'column_id': 'Confirmed'}, 'width': '15.8%'},
-                                            {'if': {'column_id': 'Recovered'}, 'width': '15.8%'},
-                                            {'if': {'column_id': 'Deaths'}, 'width': '14.2%'},
-                                            {'if': {'column_id': 'Death rate'}, 'width': '14%'},
-                                            {'if': {'column_id': 'Active'}, 'color':'#e36209'},
-                                            {'if': {'column_id': 'Confirmed'}, 'color': '#d7191c'},
-                                            {'if': {'column_id': 'Recovered'}, 'color': '#1a9622'},
-                                            {'if': {'column_id': 'Deaths'}, 'color': '#6c6c6c'},
-                                            {'textAlign': 'center'}],
-                        )
-            ]
-          )
-
-def create_dict_list_of_countries():
-    dictlist = []
-    unique_list = list(country_df["Country/Region"].unique())
-    unique_list.append("World")
-    for product_title in unique_list:
-        dictlist.append({'value': product_title, 'label': product_title})
-    return dictlist
-
-
 country_df = create_data()
-measures_data_df = create_measures()  
 
+measures_data_df = create_measures() 
 
-data_global = country_df.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
-data_global = data_global.sort_values(by=['date_file'], ascending = False ).reset_index(drop=True)
-data_global = data_global[data_global['date_file'] == data_global['date_file'][0]]
+confirmedCases, deathsCases, recoveredCases = Extract_three_main_trends(country_df)
 
-# Save numbers into variables to use in the app
-confirmedCases = data_global['Confirmed'].sum()
-deathsCases = data_global['Deaths'].sum()
-recoveredCases = data_global['Recovered'].sum()
+plusPercentNum1, df_confirmed = get_confirmed_dataset(country_df)
+plusPercentNum2, df_recovered = get_recovered_dataset(country_df)
+plusPercentNum3, df_deaths = get_deaths_dataset(country_df)
+plusPercentNum4, df_remaining = get_remaining_dataset(country_df)
 
-# Construct confirmed cases dataframe for line plot and 24-hour window case difference
-df_confirmed = country_df[['date_file','Confirmed']]
-df_confirmed = df_confirmed.groupby('date_file', as_index=False).agg({'Confirmed': 'sum'})
-df_confirmed = df_confirmed.sort_values(by=['date_file'],ascending = False)
-df_confirmed.reset_index(inplace = True)
-df_confirmed['plusNum'] = df_confirmed['Confirmed'].diff(periods=-1).fillna(0)
-plusConfirmedNum = df_confirmed['plusNum'][0]
-df_confirmed['plusPercentNum'] = df_confirmed['plusNum']/df_confirmed['Confirmed']
-plusPercentNum1 = df_confirmed['plusPercentNum'][0]
-
-# Construct recovered cases dataframe for line plot and 24-hour window case difference
-df_recovered = country_df[['date_file','Recovered']]
-df_recovered = df_recovered.groupby('date_file', as_index=False).agg({'Recovered': 'sum'})
-df_recovered = df_recovered.sort_values(by=['date_file'],ascending = False)
-df_recovered.reset_index(inplace = True)
-df_recovered['plusNum'] = df_recovered['Recovered'].diff(periods=-1).fillna(0)
-plusRecoveredNum = df_recovered['plusNum'][0]
-df_recovered['plusPercentNum'] = df_recovered['plusNum']/df_recovered['Recovered']
-plusPercentNum2 = df_recovered['plusPercentNum'][0]
-
-# Construct death case dataframe for line plot and 24-hour window case difference
-df_deaths = country_df[['date_file','Deaths']]
-df_deaths = df_deaths.groupby('date_file', as_index=False).agg({'Deaths': 'sum'})
-df_deaths = df_deaths.sort_values(by=['date_file'],ascending = False)
-df_deaths.reset_index(inplace = True)
-df_deaths['plusNum'] = df_deaths['Deaths'].diff(periods=-1).fillna(0)
-plusDeathNum = df_deaths['plusNum'][0]
-df_deaths['plusPercentNum'] = df_deaths['plusNum']/df_deaths['Deaths']
-plusPercentNum3 = df_deaths['plusPercentNum'][0]
-
-# Construct remaining case dataframe for line plot and 24-hour window case difference
-country_df['Remained'] = country_df['Confirmed'] - country_df['Recovered']
-df_remaining = country_df[['date_file','Remained']]
-df_remaining = df_remaining.groupby('date_file', as_index=False).agg({'Remained': 'sum'})
-df_remaining = df_remaining.sort_values(by=['date_file'],ascending = False)
-df_remaining.reset_index(inplace = True)
-df_remaining['plusNum'] = df_remaining['Remained'].diff(periods=-1).fillna(0)
-plusRemainedNum = df_remaining['plusNum'][0]
-df_remaining['plusPercentNum'] = df_remaining['plusNum']/df_remaining['Remained']
-plusPercentNum3 = df_remaining['plusPercentNum'][0]
 
 # Create data table to show in app
 # Generate sum values for Country/Region level
 dfCase = country_df.groupby(by='Country/Region', sort=False).sum().reset_index()
-dfCase = dfCase.sort_values(
-    by=['Confirmed'], ascending=False).reset_index(drop=True)
+dfCase = dfCase.sort_values(by=['Confirmed'], ascending=False).reset_index(drop=True)
+
 # As lat and lon also underwent sum(), which is not desired, remove from this table.
 dfCase = dfCase.drop(columns=['Latitude', 'Longitude'])
 
 # Grep lat and lon by the first instance to represent its Country/Region
-dfGPS = country_df.groupby(
-    by='Country/Region', sort=False).first().reset_index()
+dfGPS = country_df.groupby(by='Country/Region', sort=False).first().reset_index()
 dfGPS = dfGPS[['Country/Region', 'Latitude', 'Longitude']]
 
 # Merge two dataframes
@@ -218,28 +54,23 @@ dfSum = pd.merge(dfCase, dfGPS, how='inner', on='Country/Region')
 dfSum = dfSum.replace({'Country/Region': 'China'}, 'Mainland China')
 dfSum['Active'] = dfSum['Confirmed'] - dfSum['Recovered'] - dfSum['Deaths']
 dfSum['Death rate'] = dfSum['Deaths']/dfSum['Confirmed']
+
 # Rearrange columns to correspond to the number plate order
-dfSum = dfSum[['Country/Region', 'Active',
-    'Confirmed', 'Recovered', 'Deaths', 'Death rate', 'Latitude', 'Longitude']]
+dfSum = dfSum[['Country/Region', 'Active','Confirmed', 'Recovered', 'Deaths', 'Death rate', 'Latitude', 'Longitude']]
+
 # Sort value based on Active cases and then Confirmed cases
-dfSum = dfSum.sort_values(
-    by=['Active', 'Confirmed'], ascending=False).reset_index(drop=True)
+dfSum = dfSum.sort_values(by=['Active', 'Confirmed'], ascending=False).reset_index(drop=True)
+
 # Set row ids pass to selected_row_ids
 dfSum['id'] = dfSum['Country/Region']
 dfSum.set_index('id', inplace=True, drop=False)
 
 # Create tables for tabs
-CNTable = make_country_table('China')
-AUSTable = make_country_table('Australia')
-USTable = make_country_table('United States of America')
-CANTable = make_country_table('Canada')
-
-europe_list = ['Austria', 'Belgium', 'Czechia', 'Denmark', 'Estonia',
-                  'Finland', 'France', 'Germany', 'Greece', 'Hungary', 'Iceland',
-                  'Italy', 'Latvia', 'Liechtenstein', 'Lithuania', 'Luxembourg',
-                  'Malta', 'Netherlands', 'Norway', 'Poland', 'Portugal', 'Slovakia',
-                  'Slovenia', 'Spain', 'Sweden', 'Switzerland']
-EuroTable = make_europe_table(europe_list)
+CNTable = make_country_table('China',country_df)
+AUSTable = make_country_table('Australia',country_df)
+USTable = make_country_table('United States of America',country_df)
+CANTable = make_country_table('Canada',country_df)
+EuroTable = make_europe_table(country_df)
 
 # Remove dummy row of recovered case number in USTable
 USTable = USTable.dropna(subset=['Province/State'])
@@ -256,175 +87,104 @@ secondLastDate = datetime.strftime(secondLastDate_1, '%b %d')
 
 daysOutbreak = (latestDate_1 - datetime.strptime('12/31/2019', '%m/%d/%Y')).days
 
-# Read cumulative data of a given region from ./cumulative_data folder
-#dfs_curve = pd.read_csv('./lineplot_data/dfs_curve.csv')
+dict_countries = create_dict_list_of_countries(country_df)
 
-# Pseduo data for logplot
-pseduoDay = np.arange(1, daysOutbreak+1)
-y1 = 100*(1.85)**(pseduoDay-1)  # 85% growth rate
-y2 = 100*(1.35)**(pseduoDay-1)  # 35% growth rate
-y3 = 100*(1.15)**(pseduoDay-1)  # 15% growth rate
-y4 = 100*(1.05)**(pseduoDay-1)  # 5% growth rate
-
-dict_countries = create_dict_list_of_countries()
 dict_data_types = [{'value': "Confirmed", 'label': "Confirmed"},
                     {'value': "Deaths", 'label': "Deaths"},
                     {'value': "Recovered", 'label': "Recovered"}]
 
 app.config['suppress_callback_exceptions'] = True
 
-app.layout = html.Div(style={'backgroundColor': '#f4f4f2'},
+app.layout = html.Div(style={'backgroundColor': '#151515'},
     children=[
-        html.Div(
-            id="number-plate",
-            style={'marginLeft': '1.5%',
-                'marginRight': '1.5%', 'marginBottom': '.5%'},
+        html.Div(id="number-plate",
+            style={'marginLeft': '1.5%','marginRight': '1.5%', 'marginBottom': '.5%'},
                  children=[
                      html.Div(
-                         style={'width': '24.4%', 'backgroundColor': '#151515', 'display': 'inline-block',
-                                'marginRight': '.8%', 'verticalAlign': 'top'},
+                         style={'width': '24.4%', 'backgroundColor': '#f9f5f5', 'display': 'inline-block','marginRight': '.8%', 'verticalAlign': 'middle'},
                               children=[
                                   html.H3(style={'textAlign': 'center',
-                                                 'fontWeight': 'bold', 'color': '#2674f6'},
+                                                 'fontWeight': 'bold', 'color': '#151515'},
                                                children=[
-                                                   html.P(style={'color': '#16cde7', 'padding': '.5rem'},
-                                                              children='xxxx xx xxx xxxx xxx xxxxx'),
+                                                   html.P(style={'color': '#151515', 'padding': '.5rem'},
+                                                   children = "Days Since Outbreak"),
                                                    '{}'.format(daysOutbreak),
                                                ]),
-                                  html.H5(style={'textAlign': 'center', 'color': '#2674f6', 'padding': '.1rem'},
-                                               children="Days Since Outbreak")
+                                  html.H5(style={'textAlign': 'center', 'color': '#151515', 'padding': '.1rem'},
+                                               children="Days")
                                        ]),
                      html.Div(
-                         style={'width': '24.4%', 'backgroundColor': '#151515', 'display': 'inline-block',
+                         style={'width': '24.4%', 'backgroundColor': '#f9f5f5', 'display': 'inline-block',
                                 'marginRight': '.8%', 'verticalAlign': 'top'},
                               children=[
                                   html.H3(style={'textAlign': 'center',
-                                                 'fontWeight': 'bold', 'color': '#d7191c'},
+                                                 'fontWeight': 'bold', 'color': '#151515'},
                                                 children=[
                                                     html.P(style={'padding': '.5rem'},
-                                                              children='+ {:,d} in the past 24h ({:.1%})'.format(int(plusConfirmedNum), plusPercentNum1)),
+                                                              children='Confirmed Cases'),
                                                     '{:,d}'.format(
                                                         int(confirmedCases))
                                                          ]),
-                                  html.H5(style={'textAlign': 'center', 'color': '#d7191c', 'padding': '.1rem'},
-                                               children="Confirmed Cases")
+                                  html.H5(style={'textAlign': 'center', 'color': '#151515', 'padding': '.1rem'},
+                                               children="People")
                                        ]),
                      html.Div(
-                         style={'width': '24.4%', 'backgroundColor': '#151515', 'display': 'inline-block',
+                         style={'width': '24.4%', 'backgroundColor': '#f9f5f5', 'display': 'inline-block',
                                 'marginRight': '.8%', 'verticalAlign': 'top'},
                               children=[
                                   html.H3(style={'textAlign': 'center',
-                                                       'fontWeight': 'bold', 'color': '#1a9622'},
+                                                       'fontWeight': 'bold', 'color': '#151515'},
                                                children=[
                                                    html.P(style={'padding': '.5rem'},
-                                                              children='+ {:,d} in the past 24h ({:.1%})'.format(int(plusRecoveredNum), plusPercentNum2)),
+                                                              children='Recovered Cases'),
                                                    '{:,d}'.format(
                                                        int(recoveredCases)),
                                                ]),
-                                  html.H5(style={'textAlign': 'center', 'color': '#1a9622', 'padding': '.1rem'},
-                                               children="Recovered Cases")
+                                  html.H5(style={'textAlign': 'center', 'color': '#151515', 'padding': '.1rem'},
+                                               children="People")
                                        ]),
                      html.Div(
-                         style={'width': '24.4%', 'backgroundColor': '#151515', 'display': 'inline-block',
+                         style={'width': '24.4%', 'backgroundColor': '#f9f5f5', 'display': 'inline-block',
                                 'verticalAlign': 'top'},
                               children=[
                                   html.H3(style={'textAlign': 'center',
-                                                       'fontWeight': 'bold', 'color': '#6c6c6c'},
+                                                       'fontWeight': 'bold', 'color': '#151515'},
                                                 children=[
                                                     html.P(style={'padding': '.5rem'},
-                                                              children='+ {:,d} in the past 24h ({:.1%})'.format(int(plusDeathNum), plusPercentNum3)),
+                                                              children='Death Cases'),
                                                     '{:,d}'.format(int(deathsCases))
                                                 ]),
-                                  html.H5(style={'textAlign': 'center', 'color': '#6c6c6c', 'padding': '.1rem'},
-                                               children="Death Cases")
+                                  html.H5(style={'textAlign': 'center', 'color': '#151515', 'padding': '.1rem'},
+                                               children="People")
                                        ])
                           ]),
-        html.Div(
-            id='dcc-drop-countries',
-            style={'marginLeft': '1.5%', 'marginRight': '1.5%',
-                'marginBottom': '.35%', 'marginTop': '.5%'},
+
+        html.Div(id='dcc-map', style={'marginLeft': '1.5%', 'marginRight': '1.5%', 'marginBottom': '.5%'},
                  children=[
-                     html.Div(
-                         style={'width': '32.79%', 'display': 'inline-block',
-                             'marginRight': '.8%', 'verticalAlign': 'top'},
+                     html.Div(style={'width': '100%', 'marginRight': '.8%', 'display': 'inline-block', 'verticalAlign': 'top'},
                               children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Select Countries to compare'),
-                                          dcc.Dropdown(id='country-dropdown', options=dict_countries, multi=True, value = ["World","Australia"])]),
-                    html.Div(
-                         style={'width': '32.79%', 'display': 'inline-block',
-                             'marginRight': '.8%', 'verticalAlign': 'top'},
-                              children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Select Countries to compare'),
-                                          dcc.Dropdown(id='data-types-dropdown', options=dict_data_types, multi=False, value = "Confirmed")])                                         
-                                          
-                                          ]),
-        html.Div(
-            id='dcc-plot',
-            style={'marginLeft': '1.5%', 'marginRight': '1.5%',
-                'marginBottom': '.35%', 'marginTop': '.5%'},
-                 children=[
-                     html.Div(
-                         style={'width': '32.79%', 'display': 'inline-block',
-                             'marginRight': '.8%', 'verticalAlign': 'top'},
-                              children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Confirmed Case Timeline'),
-                                  dcc.Graph(style={'height': '300px'}, id='country-like-trend')]),
-                     html.Div(
-                         style={'width': '32.79%', 'display': 'inline-block',
-                             'marginRight': '.8%', 'verticalAlign': 'top'},
-                              children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Active/Recovered/Death Case Timeline'),
-                                  dcc.Graph(style={'height': '300px'}, id='country-like-world')]),
-                     html.Div(
-                         style={'width': '32.79%', 'display': 'inline-block',
-                             'verticalAlign': 'top'},
-                              children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Death Rate (%) Timeline'),
-                                  dcc.Graph(style={'height': '300px'}, id='country-like-global')])]),
-        html.Div(
-            id='dcc-map',
-            style={'marginLeft': '1.5%', 'marginRight': '1.5%', 'marginBottom': '.5%'},
-                 children=[
-                     html.Div(style={'width': '66.41%', 'marginRight': '.8%', 'display': 'inline-block', 'verticalAlign': 'top'},
-                              children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Latest Coronavirus Outbreak Map'),
                                   dcc.Graph(
                                       id='datatable-interact-map',
-                                      style={'height': '500px'},),
-                                  dcc.Tabs(
-                                      id="tabs-plots", 
-                                      value='Cumulative Cases',
-                                      parent_className='custom-tabs',
-                                      className='custom-tabs-container', 
-                                      children=[dcc.Tab(className='custom-tab',
-                                                        selected_className='custom-tab--selected',
-                                                        label='Cumulative Cases', 
-                                                        value='Cumulative Cases'),
-                                                dcc.Tab(className='custom-tab',
-                                                        selected_className='custom-tab--selected',
-                                                        label='Confirmed Case Trajectories', 
-                                                        value='Confirmed Case Trajectories'),
-                                      ]
-                                  ),
-                                  html.Div(id='tabs-content-plots'),
-                              ]),
-                     html.Div(style={'width': '32.79%', 'display': 'inline-block', 'verticalAlign': 'top'},
+                                      style={'height': '800px'},),
+                                #   dcc.Tabs(
+                                #       id="tabs-plots", 
+                                #       value='Cumulative Cases',
+                                #       parent_className='custom-tabs',
+                                #       className='custom-tabs-container', 
+                                #       children=[dcc.Tab(className='custom-tab',
+                                #                         selected_className='custom-tab--selected',
+                                #                         label='Cumulative Cases', 
+                                #                         value='Cumulative Cases'),
+                                #                 dcc.Tab(className='custom-tab',
+                                #                         selected_className='custom-tab--selected',
+                                #                         label='Confirmed Case Trajectories', 
+                                #                         value='Confirmed Case Trajectories'),
+                                #       ]
+                                #   ),
+                                  html.Div(id='tabs-content-plots')])]),
+
+        html.Div(style={'width': '100%', 'display': 'inline-block', 'verticalAlign': 'top'},
                               children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Cases Summary by Location'),
                                   dcc.Tabs(
                                       id="tabs-table",
                                       value='The World',
@@ -494,8 +254,54 @@ app.layout = html.Div(style={'backgroundColor': '#f4f4f2'},
                                               'United States', USTable),
                                       ]
                                   )
-                              ])
-                 ])
+                              ]),
+        html.Div(
+            id='dcc-drop-countries',
+            style={'marginLeft': '1.5%', 'marginRight': '1.5%',
+                'marginBottom': '.35%', 'marginTop': '.5%'},
+                 children=[
+                     html.Div(
+                         style={'width': '32.79%', 'display': 'inline-block',
+                             'marginRight': '.8%', 'verticalAlign': 'top'},
+                              children=[
+                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
+                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
+                                               children='Select Countries to compare'),
+                                          dcc.Dropdown(id='country-dropdown', options=dict_countries, multi=True, value = ["World","Australia"])]),
+                    html.Div(
+                         style={'width': '32.79%', 'display': 'inline-block',
+                             'marginRight': '.8%', 'verticalAlign': 'top'},
+                              children=[
+                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
+                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
+                                               children='Select Data type to compare'),
+                                          dcc.Dropdown(id='data-types-dropdown', options=dict_data_types, multi=False, value = "Confirmed")])                                         
+                                          
+                                          ]),
+        html.Div(
+            id='dcc-plot',
+            style={'marginLeft': '1.5%', 'marginRight': '1.5%',
+                'marginBottom': '.35%', 'marginTop': '.5%'},
+                 children=[
+                     html.Div(
+                         style={'width': '67%', 'display': 'inline-block',
+                             'marginRight': '.8%', 'verticalAlign': 'top'},
+                              children=[
+                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
+                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
+                                               children='Confirmed Case Timeline'),
+                                  dcc.Graph(style={'height': '300px'}, id='country-like-trend')]),
+                     html.Div(
+                         style={'width': '30%', 'display': 'inline-block',
+                             'marginRight': '.8%', 'verticalAlign': 'top'},
+                              children=[
+                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
+                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
+                                               children='Active/Recovered/Death Case Timeline'),
+                                  dcc.Graph(style={'height': '300px'}, id='country-like-world')])                               
+                            ]
+                )                           
+        
         ])
 
 @app.callback(Output('country-like-trend', 'figure'), [Input('country-dropdown', 'value'), Input("data-types-dropdown", "value")])
@@ -613,50 +419,6 @@ def update_Australia(selected_dropdown_value_country,selected_dropdown_value_dat
         )
     )
         
-    return figure
-
-@app.callback(Output('country-like-global', 'figure'), [Input('country-dropdown', 'value'), Input("data-types-dropdown", "value")])
-def update_map(selected_dropdown_value_country,selected_dropdown_value_dataType):   
-
-    Countries = selected_dropdown_value_country
-    type_data = selected_dropdown_value_dataType
-
-    df_ISO = measures_data_df[['ISO','COUNTRY']]
-    df_ISO.drop_duplicates(keep='first',inplace=True)
-
-    d = {}
-    for i in range(len(df_ISO)):
-        d[df_ISO.iloc[i]['COUNTRY']] = df_ISO.iloc[i]['ISO']
-
-    df = country_df.groupby(["Country/Region",'date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
-    df = df.groupby("Country/Region", as_index=False).agg({'Confirmed': 'max', 'Deaths':'max','Recovered':'max'})
-    
-    df['CODE'] = df['Country/Region'].map(d) 
-
-    figure = go.Figure(data=go.Choropleth(
-    locations = df['CODE'],
-    z = df[type_data],
-    text = df['Country/Region'],
-    colorscale = 'Reds',
-    autocolorscale=False,
-    reversescale=False,
-    marker_line_color='darkgray',
-    marker_line_width=0.5,
-    colorbar_tickprefix = '',
-    colorbar_title = 'People',
-    ))
-
-    figure.update_layout(
-    template = "plotly_dark",
-    title_text='COVID-19 Cases',
-    geo=dict(
-        showframe=False,
-        showcoastlines=False,
-        projection_type='orthographic'
-    ),
-    margin={"r":0,"t":0,"l":0,"b":0}
-    )
-    
     return figure
 
 @app.callback(
@@ -817,7 +579,7 @@ def update_figures(value, derived_virtual_selected_rows, selected_row_ids,
         )],
         mapbox=go.layout.Mapbox(
             accesstoken=mapbox_access_token,
-            style="dark",
+            style="satellite",
             # The direction you're facing, measured clockwise as an angle from true north on a compass
             bearing=0,
             center=go.layout.mapbox.Center(
