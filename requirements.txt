@@ -1,0 +1,4 @@
+numpy==1.17.0
+pandas==0.25.0
+dash==1.4.1
+dash-table==4.4.1
