@@ -46,6 +46,7 @@ USTable = USTable.dropna(subset=['Province/State'])
 CANTable = make_country_table('Canada',country_df)
 CANTable = CANTable.dropna(subset=['Province/State'])
 EuroTable = make_europe_table(country_df)
+LatinAmericaTable = make_Latin_America_table(country_df)
 
 #Get days Outbreak
 daysOutbreak = get_daysOutbreak(df_confirmed)
@@ -193,9 +194,9 @@ app.layout = html.Div(style={'backgroundColor': '#151515'},
                                           make_dcc_country_tab(
                                               'Australia', AUSTable),
                                           make_dcc_country_tab(
-                                              'Canada', CANTable),
+                                              'Europe', EuroTable),
                                           make_dcc_country_tab(
-                                               'Europe', EuroTable),
+                                               'LatinAmerica', LatinAmericaTable),
                                           make_dcc_country_tab(
                                               'Mainland China', CNTable),
                                           make_dcc_country_tab(
@@ -357,10 +358,10 @@ def update_Australia(selected_dropdown_value_country,selected_dropdown_value_dat
      Input('datatable-interact-location', 'selected_row_ids'),
      Input('datatable-interact-location-Australia', 'derived_virtual_selected_rows'),
      Input('datatable-interact-location-Australia', 'selected_row_ids'),
-     Input('datatable-interact-location-Canada', 'derived_virtual_selected_rows'),
-     Input('datatable-interact-location-Canada', 'selected_row_ids'),
      Input('datatable-interact-location-Europe', 'derived_virtual_selected_rows'),
      Input('datatable-interact-location-Europe', 'selected_row_ids'),
+     Input('datatable-interact-location-LatinAmerica', 'derived_virtual_selected_rows'),
+     Input('datatable-interact-location-LatinAmerica', 'selected_row_ids'),
      Input('datatable-interact-location-Mainland China', 'derived_virtual_selected_rows'),
      Input('datatable-interact-location-Mainland China', 'selected_row_ids'),
      Input('datatable-interact-location-United States', 'derived_virtual_selected_rows'),
@@ -369,8 +370,8 @@ def update_Australia(selected_dropdown_value_country,selected_dropdown_value_dat
 )
 def update_figures(value, derived_virtual_selected_rows, selected_row_ids, 
   Australia_derived_virtual_selected_rows, Australia_selected_row_ids,
-  Canada_derived_virtual_selected_rows, Canada_selected_row_ids,
   Europe_derived_virtual_selected_rows, Europe_selected_row_ids,
+  LatinAmerica_derived_virtual_selected_rows, LatinAmerica_selected_row_ids,
   CHN_derived_virtual_selected_rows, CHN_selected_row_ids,
   US_derived_virtual_selected_rows, US_selected_row_ids
   ):
@@ -381,14 +382,14 @@ def update_figures(value, derived_virtual_selected_rows, selected_row_ids,
         dff,latitude,longitude,zoom = get_data_world(dfSum,derived_virtual_selected_rows, selected_row_ids)
     elif value == 'Australia':
         dff,latitude,longitude,zoom = get_data_Australia(AUSTable,Australia_derived_virtual_selected_rows, Australia_selected_row_ids)
-    elif value == 'Canada':
-        dff,latitude,longitude,zoom = get_data_Canada(CANTable,Canada_derived_virtual_selected_rows, Canada_selected_row_ids)
     elif value == 'Mainland China':
         dff,latitude,longitude,zoom = get_data_Mainland_China(CNTable,CHN_derived_virtual_selected_rows, CHN_selected_row_ids)
     elif value == 'United States':
         dff,latitude,longitude,zoom = get_data_United_States(USTable,US_derived_virtual_selected_rows, US_selected_row_ids)
     elif value == 'Europe':
         dff,latitude,longitude,zoom = get_data_Europe(EuroTable,Europe_derived_virtual_selected_rows, Europe_selected_row_ids)
+    elif value == 'LatinAmerica':
+        dff,latitude,longitude,zoom = get_data_LatinAmerica(LatinAmericaTable,LatinAmerica_derived_virtual_selected_rows, LatinAmerica_selected_row_ids)
 
     # Generate a list for hover text display
     textList = []
