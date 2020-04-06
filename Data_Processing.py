@@ -11,19 +11,24 @@ def create_data():
     directory = r"C:\\repos\COVID-19\csse_covid_19_data\csse_covid_19_daily_reports"
     #directory = r"/mnt/c/repos/COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
     data = []
-
     repeated_names = {
         "Mainland China":"China",
         "US": 'United States of America',
         "UK": 'United Kingdom'
     }
-
     for root,dirs,files in os.walk(directory):    
         for csvfile in files:
             if csvfile.endswith(".csv"):
                 path = directory + "\\" + csvfile
                 #path = directory + "/" + csvfile
                 tempData = pd.read_csv(path)
+                change_names = {
+                "Province_State":"Province/State",
+                "Country_Region": 'Country/Region',
+                "Lat": 'Latitude',
+                "Long_":"Longitude",
+                "Last_Update":"Last Update" }
+                tempData.rename(columns=change_names,inplace=True)
                 tempData['date_file'] = csvfile.split(".")[0]
                 tempData['date_file'] = pd.to_datetime(tempData['date_file'], infer_datetime_format= True)
                 tempData['date_file'] = tempData['date_file'].dt.strftime('%m/%d/%Y')
@@ -180,6 +185,42 @@ def make_europe_table(country_df):
     pd.options.mode.chained_assignment = 'warn'
     return europe_table
 
+def make_Latin_America_table(country_df):
+
+    LatinAmerica_list = ['Brazil', 'Argentina', 'Colombia', 'Peru', 'Chile',
+                  'Ecuador', 'Venezuela', 'Bolivia', 'Uruguay', 'Paraguay', 'Guyana',
+                  'Mexico', 'Guatemala', 'Cuba', 'Honduras', 'Nicaragua', 'Panama' ]
+
+    LatinAmerica_table = country_df.loc[country_df['Country/Region'].isin(LatinAmerica_list)]
+
+    LatinAmerica_table = LatinAmerica_table.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
+    LatinAmerica_table = LatinAmerica_table.sort_values(by=['date_file'])
+    LatinAmerica_table.drop_duplicates(subset = ['Province/State','Country/Region'], keep = 'last', inplace = True)
+    repeated_names = {
+        "Mainland China":"China",
+        "US": 'United States of America',
+        "UK": 'United Kingdom'
+    }
+    coordinates = pd.read_csv("./data/coordinates.csv")
+    coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
+    coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
+    coordinates = coordinates[coordinates['Country/Region'].isin(LatinAmerica_list)]    
+    LatinAmerica_table = pd.merge(LatinAmerica_table,coordinates, on=['Province/State','Country/Region'])
+
+    # Suppress SettingWithCopyWarning
+    pd.options.mode.chained_assignment = None
+    LatinAmerica_table['Active'] = LatinAmerica_table['Confirmed'] - LatinAmerica_table['Recovered'] - LatinAmerica_table['Deaths']
+    LatinAmerica_table['Death rate'] = LatinAmerica_table['Deaths']/LatinAmerica_table['Confirmed']
+    LatinAmerica_table = LatinAmerica_table[['Country/Region', 'Active', 'Confirmed', 'Recovered', 'Deaths', 'Death rate', 'Latitude', 'Longitude']]
+    LatinAmerica_table = LatinAmerica_table.sort_values(
+            by=['Active', 'Confirmed'], ascending=False).reset_index(drop=True)
+    # Set row ids pass to selected_row_ids
+    LatinAmerica_table['id'] = LatinAmerica_table['Country/Region']
+    LatinAmerica_table.set_index('id', inplace=True, drop=False)
+    # Turn on SettingWithCopyWarning
+    pd.options.mode.chained_assignment = 'warn'
+    return LatinAmerica_table
+
 def create_dict_list_of_countries(country_df):
     dictlist = []
     unique_list = list(country_df["Country/Region"].unique())
@@ -262,9 +303,14 @@ def get_remaining_dataset(country_df):
 
 def get_df_CGS(country_df):
 
+
+    data = country_df.groupby(['Province/State','Country/Region','date_file'], as_index=False).sum().reset_index()
+    data = data.sort_values(by=['date_file'], ascending = False ).reset_index(drop=True)
+    data = data[data['date_file'] == data['date_file'][0]]  
+
     # Create data table to show in app
     # Generate sum values for Country/Region level
-    dfCase = country_df.groupby(by='Country/Region', sort=False).sum().reset_index()
+    dfCase = data.groupby(by='Country/Region', sort=False).sum().reset_index()
     dfCase = dfCase.sort_values(by=['Confirmed'], ascending=False).reset_index(drop=True)
 
     # As lat and lon also underwent sum(), which is not desired, remove from this table.
@@ -386,5 +432,16 @@ def get_data_Europe(EuroTable,Europe_derived_virtual_selected_rows, Europe_selec
     latitude = 52.405175 if len(Europe_derived_virtual_selected_rows) == 0 else dff.loc[Europe_selected_row_ids[0]].Latitude
     longitude = 11.403996 if len(Europe_derived_virtual_selected_rows) == 0 else dff.loc[Europe_selected_row_ids[0]].Longitude
     zoom = 2.5 if len(Europe_derived_virtual_selected_rows) == 0 else 12
+    
+    return dff,latitude,longitude,zoom
+
+def get_data_LatinAmerica(LatinAmericaTable,LatinAmerica_derived_virtual_selected_rows, LatinAmerica_selected_row_ids):
+    
+    if LatinAmerica_derived_virtual_selected_rows is None:
+        LatinAmerica_derived_virtual_selected_rows = []
+    dff = LatinAmericaTable
+    latitude = 5.62613 if len(LatinAmerica_derived_virtual_selected_rows) == 0 else dff.loc[LatinAmerica_selected_row_ids[0]].Latitude
+    longitude = -77.680689 if len(LatinAmerica_derived_virtual_selected_rows) == 0 else dff.loc[LatinAmerica_selected_row_ids[0]].Longitude
+    zoom = 3 if len(LatinAmerica_derived_virtual_selected_rows) == 0 else 12
     
     return dff,latitude,longitude,zoom
