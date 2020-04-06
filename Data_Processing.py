@@ -11,19 +11,24 @@ def create_data():
     directory = r"C:\\repos\COVID-19\csse_covid_19_data\csse_covid_19_daily_reports"
     #directory = r"/mnt/c/repos/COVID-19/csse_covid_19_data/csse_covid_19_daily_reports"
     data = []
-
     repeated_names = {
         "Mainland China":"China",
         "US": 'United States of America',
         "UK": 'United Kingdom'
     }
-
     for root,dirs,files in os.walk(directory):    
         for csvfile in files:
             if csvfile.endswith(".csv"):
                 path = directory + "\\" + csvfile
                 #path = directory + "/" + csvfile
                 tempData = pd.read_csv(path)
+                change_names = {
+                "Province_State":"Province/State",
+                "Country_Region": 'Country/Region',
+                "Lat": 'Latitude',
+                "Long_":"Longitude",
+                "Last_Update":"Last Update" }
+                tempData.rename(columns=change_names,inplace=True)
                 tempData['date_file'] = csvfile.split(".")[0]
                 tempData['date_file'] = pd.to_datetime(tempData['date_file'], infer_datetime_format= True)
                 tempData['date_file'] = tempData['date_file'].dt.strftime('%m/%d/%Y')
@@ -262,9 +267,14 @@ def get_remaining_dataset(country_df):
 
 def get_df_CGS(country_df):
 
+
+    data = country_df.groupby(['Province/State','Country/Region','date_file'], as_index=False).sum().reset_index()
+    data = data.sort_values(by=['date_file'], ascending = False ).reset_index(drop=True)
+    data = data[data['date_file'] == data['date_file'][0]]  
+
     # Create data table to show in app
     # Generate sum values for Country/Region level
-    dfCase = country_df.groupby(by='Country/Region', sort=False).sum().reset_index()
+    dfCase = data.groupby(by='Country/Region', sort=False).sum().reset_index()
     dfCase = dfCase.sort_values(by=['Confirmed'], ascending=False).reset_index(drop=True)
 
     # As lat and lon also underwent sum(), which is not desired, remove from this table.
