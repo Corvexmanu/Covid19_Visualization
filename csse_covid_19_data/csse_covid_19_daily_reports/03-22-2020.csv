@@ -1,4 +1,4 @@
-﻿FIPS,Admin2,Province/State,Country/Region,Last Update,Latitude,Longitude,Confirmed,Deaths,Recovered,Active,Combined_Key
+﻿FIPS,Admin2,Province_State,Country_Region,Last_Update,Lat,Long_,Confirmed,Deaths,Recovered,Active,Combined_Key
 36061,New York City,New York,US,3/22/20 23:45,40.7672726,-73.97152637,9654,63,0,0,"New York City, New York, US"
 36059,Nassau,New York,US,3/22/20 23:45,40.74066522,-73.58941873,1900,4,0,0,"Nassau, New York, US"
 36119,Westchester,New York,US,3/22/20 23:45,41.16278376,-73.75741653,1873,0,0,0,"Westchester, New York, US"
@@ -1336,7 +1336,7 @@
 8115,Sedgwick,Colorado,US,3/22/20 23:45,40.87595412,-102.3519227,0,0,0,0,"Sedgwick, Colorado, US"
 8119,Teller,Colorado,US,3/22/20 23:45,38.88133511,-105.1614893,0,0,0,0,"Teller, Colorado, US"
 8121,Washington,Colorado,US,3/22/20 23:45,39.97015535,-103.202587,0,0,0,0,"Washington, Colorado, US"
-11001,District of Columbia,District of Columbia,US,3/22/20 23:45,38.90417773,-77.01655992,0,0,0,0,"District of Columbia, District of Columbia, US"
+11001,District of Columbia,District of Columbia,US,3/22/20 23:45,38.90417773,-77.01655992,102,0,0,0,"District of Columbia, District of Columbia, US"
 12013,Calhoun,Florida,US,3/22/20 23:45,30.40666734,-85.19394153,0,0,0,0,"Calhoun, Florida, US"
 12027,DeSoto,Florida,US,3/22/20 23:45,27.18677893,-81.80941373,0,0,0,0,"DeSoto, Florida, US"
 12029,Dixie,Florida,US,3/22/20 23:45,29.60631086,-83.15724673,0,0,0,0,"Dixie, Florida, US"
@@ -3227,9 +3227,9 @@
 ,,Henan,China,3/14/20 9:49,33.882,113.614,1273,22,1250,1,"Henan, China"
 ,,Hunan,China,3/14/20 8:25,27.6104,111.7088,1018,4,1014,0,"Hunan, China"
 ,,Shanxi,China,3/13/20 8:56,37.5777,112.2922,133,0,133,0,"Shanxi, China"
-,,Jilin,China,3/12/2020 12:54,43.6661,126.1923,93,1,92,0,"Jilin, China"
-,,Xinjiang,China,3/08/2020 5:31,41.1129,85.2401,76,3,73,0,"Xinjiang, China"
-,,Anhui,China,3/08/2020 5:19,31.8257,117.2264,990,6,984,0,"Anhui, China"
+,,Jilin,China,3/12/20 12:54,43.6661,126.1923,93,1,92,0,"Jilin, China"
+,,Xinjiang,China,3/8/20 5:31,41.1129,85.2401,76,3,73,0,"Xinjiang, China"
+,,Anhui,China,3/8/20 5:19,31.8257,117.2264,990,6,984,0,"Anhui, China"
 ,,Tibet,China,2/23/20 11:19,31.6927,88.0924,1,0,1,0,"Tibet, China"
 ,,Qinghai,China,2/23/20 11:19,35.7452,95.9956,18,0,18,0,"Qinghai, China"
 ,,,Italy,3/22/20 23:45,41.87194,12.56738,59138,5476,7024,46638,Italy

@@ -8,18 +8,12 @@ import math
 import os
 
 
-# Function for remove comma within numbers
-def removeCommas(string): 
-    string = string.replace(',','')
-    return string 
-
 def Get_Queensland_data():
+
     headers = ({'User-Agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'})
-    worldometers = "https://www.qld.gov.au/health/conditions/health-alerts/coronavirus-covid-19/current-status/current-status-and-contact-tracing-alerts"
-    response = get(worldometers, headers=headers)
-
+    QLD = "https://www.qld.gov.au/health/conditions/health-alerts/coronavirus-covid-19/current-status/current-status-and-contact-tracing-alerts"
+    response = get(QLD, headers=headers)
     html_soup = BeautifulSoup(response.text, 'html.parser')
-
     table_contents = html_soup.find_all('tbody')
     table_header = html_soup.find_all('thead')
 
@@ -57,12 +51,11 @@ def Get_Queensland_data():
     return Queensland_Regions
 
 def Get_NewSouthWales_data():
+
     headers = ({'User-Agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'})
-    worldometers_2 = "https://www.health.nsw.gov.au/Infectious/diseases/Pages/covid-19-lga.aspx#unknown"
-    response = get(worldometers_2, headers=headers)
-
+    NSW = "https://www.health.nsw.gov.au/Infectious/diseases/Pages/covid-19-lga.aspx#unknown"
+    response = get(NSW, headers=headers)
     html_soup = BeautifulSoup(response.text, 'html.parser')
-
     table_contents = html_soup.find_all('tbody')
 
     # Save value into columns
@@ -91,3 +84,36 @@ def Get_NewSouthWales_data():
 
     return NewSouthWales_Regions
 
+def Get_Mexico_States():
+
+    headers = ({'User-Agent':'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'})
+    MEX = "https://en.wikipedia.org/wiki/List_of_states_of_Mexico"
+    response = get(MEX, headers=headers)
+    html_soup = BeautifulSoup(response.text, 'html.parser')
+    table_contents = html_soup.find_all('tbody')
+
+    # Save value into columns
+    State = []
+    Population = []
+
+    for row_2 in table_contents[0].find_all('tr'):
+        cells_2 = row_2.find_all('th')
+
+        if len(cells_2[0].contents) >=1:
+            State.append(str(cells_2[0].contents[0]).strip())
+        else:
+            State.append(0)
+        
+        if len(cells_2[1].contents) >=1:
+            Population.append(int(str(cells_2[1].contents[0]).strip().split('-')[0]))
+        else:
+            Population.append(0)
+
+
+    Mexico_Regions = pd.DataFrame({'Province/Region': State,
+                            'Population': Population,
+                            })
+
+    Mexico_Regions = NewSouthWales_Regions[:-1]
+
+    return Mexico_Regions

@@ -28,6 +28,8 @@ mapbox_access_token = "pk.eyJ1IjoiY29ydmV4IiwiYSI6ImNrODlvc2VzOTA4eHEzbW94d3RqMW
 
 #Get initial datasets
 country_df = create_data()
+colombia_df = create_Colombia()
+mexico_df = create_Mexico()
 measures_data_df = create_measures() 
 
 #Get variables to be used in Visualization
@@ -47,6 +49,9 @@ CANTable = make_country_table('Canada',country_df)
 CANTable = CANTable.dropna(subset=['Province/State'])
 EuroTable = make_europe_table(country_df)
 LatinAmericaTable = make_Latin_America_table(country_df)
+ColombiaTable = make_country_table('Colombia',colombia_df)
+MexicoTable = make_country_table('Mexico',mexico_df)
+
 
 #Get days Outbreak
 daysOutbreak = get_daysOutbreak(df_confirmed)
@@ -198,9 +203,9 @@ app.layout = html.Div(style={'backgroundColor': '#151515'},
                                           make_dcc_country_tab(
                                                'LatinAmerica', LatinAmericaTable),
                                           make_dcc_country_tab(
-                                              'Mainland China', CNTable),
+                                              'Colombia', ColombiaTable),
                                           make_dcc_country_tab(
-                                              'United States', USTable),
+                                              'Mexico', MexicoTable),
                                       ]
                                   )
                               ]),
@@ -233,21 +238,13 @@ app.layout = html.Div(style={'backgroundColor': '#151515'},
                 'marginBottom': '.35%', 'marginTop': '.5%'},
                  children=[
                      html.Div(
-                         style={'width': '67%', 'display': 'inline-block',
+                         style={'width': '99%', 'display': 'inline-block',
                              'marginRight': '.8%', 'verticalAlign': 'top'},
                               children=[
                                   html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
                                                  'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
                                                children='Confirmed Case Timeline'),
-                                  dcc.Graph(style={'height': '300px'}, id='country-like-trend')]),
-                     html.Div(
-                         style={'width': '30%', 'display': 'inline-block',
-                             'marginRight': '.8%', 'verticalAlign': 'top'},
-                              children=[
-                                  html.H5(style={'textAlign': 'center', 'backgroundColor': '#16cde7',
-                                                 'color': '#fdf7f7', 'padding': '1rem', 'marginBottom': '0'},
-                                               children='Active/Recovered/Death Case Timeline'),
-                                  dcc.Graph(style={'height': '300px'}, id='country-like-world')])                               
+                                  dcc.Graph(style={'height': '600px'}, id='country-like-trend')])                              
                             ]
                 )                           
         
@@ -362,18 +359,18 @@ def update_Australia(selected_dropdown_value_country,selected_dropdown_value_dat
      Input('datatable-interact-location-Europe', 'selected_row_ids'),
      Input('datatable-interact-location-LatinAmerica', 'derived_virtual_selected_rows'),
      Input('datatable-interact-location-LatinAmerica', 'selected_row_ids'),
-     Input('datatable-interact-location-Mainland China', 'derived_virtual_selected_rows'),
-     Input('datatable-interact-location-Mainland China', 'selected_row_ids'),
-     Input('datatable-interact-location-United States', 'derived_virtual_selected_rows'),
-     Input('datatable-interact-location-United States', 'selected_row_ids'),
+     Input('datatable-interact-location-Colombia', 'derived_virtual_selected_rows'),
+     Input('datatable-interact-location-Colombia', 'selected_row_ids'),
+     Input('datatable-interact-location-Mexico', 'derived_virtual_selected_rows'),
+     Input('datatable-interact-location-Mexico', 'selected_row_ids'),
      ]
 )
 def update_figures(value, derived_virtual_selected_rows, selected_row_ids, 
   Australia_derived_virtual_selected_rows, Australia_selected_row_ids,
   Europe_derived_virtual_selected_rows, Europe_selected_row_ids,
   LatinAmerica_derived_virtual_selected_rows, LatinAmerica_selected_row_ids,
-  CHN_derived_virtual_selected_rows, CHN_selected_row_ids,
-  US_derived_virtual_selected_rows, US_selected_row_ids
+  Colombia_derived_virtual_selected_rows, Colombia_selected_row_ids,
+  Mexico_derived_virtual_selected_rows, Mexico_selected_row_ids
   ):
 
     #Get initial data required
@@ -382,10 +379,10 @@ def update_figures(value, derived_virtual_selected_rows, selected_row_ids,
         dff,latitude,longitude,zoom = get_data_world(dfSum,derived_virtual_selected_rows, selected_row_ids)
     elif value == 'Australia':
         dff,latitude,longitude,zoom = get_data_Australia(AUSTable,Australia_derived_virtual_selected_rows, Australia_selected_row_ids)
-    elif value == 'Mainland China':
-        dff,latitude,longitude,zoom = get_data_Mainland_China(CNTable,CHN_derived_virtual_selected_rows, CHN_selected_row_ids)
-    elif value == 'United States':
-        dff,latitude,longitude,zoom = get_data_United_States(USTable,US_derived_virtual_selected_rows, US_selected_row_ids)
+    elif value == 'Colombia':
+        dff,latitude,longitude,zoom = get_data_Colombia(ColombiaTable,Colombia_derived_virtual_selected_rows, Colombia_selected_row_ids)
+    elif value == 'Mexico':
+        dff,latitude,longitude,zoom = get_data_Mexico(MexicoTable,Mexico_derived_virtual_selected_rows, Mexico_selected_row_ids)
     elif value == 'Europe':
         dff,latitude,longitude,zoom = get_data_Europe(EuroTable,Europe_derived_virtual_selected_rows, Europe_selected_row_ids)
     elif value == 'LatinAmerica':

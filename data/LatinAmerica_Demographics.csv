@@ -1,0 +1,66 @@
+ID,CITY,Inhabitants,State,Country,LAT,LONG
+1,Bogotá,7181469,Bogotá D.C.,Colombia,4.6097102,-74.081749
+2,Cali,3789874,Valle del Cauca,Colombia,3.4372201,-76.5224991
+3,Medellín,5974788,Antioquia,Colombia,6.2518401,-75.563591
+4,Barranquilla D.E.,2342265,Barranquilla,Colombia,10.9685402,-74.7813187
+5,Cartagena,1909460,Cartagena D.T. y C,Colombia,10.3997202,-75.5144424
+6,Cúcuta,1346806,Norte de Santander,Colombia,7.8939099,-72.5078201
+7,Bucaramanga,2008841,Santander,Colombia,7.1253901,-73.1197968
+8,Pereira,839597,Risaralda,Colombia,4.8133302,-75.6961136
+9,Santa Marta D.T. y C.,1263788,Magdalena,Colombia,11.2407904,-74.1990433
+10,Ibagué,1228763,Tolima,Colombia,4.43889,-75.2322235
+11,Pasto,1335521,Nariño,Colombia,1.2136101,-77.2811127
+12,Manizales,923472,Caldas,Colombia,5.0688901,-75.5173798
+13,Neiva,1009548,Huila,Colombia,2.9273,-75.2818909
+14,Villavicencio,919129,Meta,Colombia,4.1420002,-73.6266403
+15,Armenia,509640,Quindío,Colombia,4.5338898,-75.6811066
+16,Valledupar,1098577,Cesar,Colombia,10.4631395,-73.2532196
+17,Montería,864036,Córdoba,Colombia,8.7479801,-75.8814316
+18,Riohacha ,825364,La Guajira,Colombia,11.5444403,-72.9072189
+19,Sincelejo,1555596,Sucre,Colombia,9.3047199,-75.3977814
+20,Quibdo,457412,Chocó,Colombia,5.6918802,-76.6583481
+21,Popayan,1243503,Cauca,Colombia,2.43823,-76.6131592
+22,Mocoa,283197,Putumayo,Colombia,1.15284,-76.6520767
+23,Florencia,359602,Caquetá,Colombia,1.68318,-77.0733109
+24,Leticia,66056,Amazonas,Colombia,-4.2152801,-69.9405594
+25,Mitu,37690,Vaupés,Colombia,1.25778,-70.2347183
+26,San Jose del Guaviare,73081,Guaviare,Colombia,2.57286,-72.6459122
+27,Inirida,44431,Guainía,Colombia,3.8652799,-67.9238892
+28,Pto Carreño,76642,Vichada,Colombia,6.1890302,-67.485878
+29,Yopal,379892,Casanare,Colombia,5.33775,-72.3958588
+30,Tunja,1135698,Boyacá,Colombia,5.5352802,-73.3677826
+31,Arauca,239503,Arauca,Colombia,7.0847101,-70.759079
+32,San Andrés,48299,San Andrés y Providencia,Colombia,12.5847197,-81.7005615
+33,Cundinamarca,2792877,Cundinamarca,Colombia,5.026003,74.0300122
+34,Aguascalientes,1184996,Aguascalientes,Mexico,22.016667,102.35
+35,Mexicali,3155070,Baja California,Mexico,30.3400646,-117.7749902
+36,La Paz,637026,Baja California Sur,Mexico,25.4189289,-114.5627623
+37,Campeche,822441,Campeche,Mexico,19.3285649,-91.9164003
+38,Saltillo,2748391,Coahuila ,Mexico,27.1934279,-104.145809
+39,Colima,650555,Colima,Mexico,18.8716789,-113.6206964
+40,Tuxtla Gutiérrez,4796580,Chiapas,Mexico,16.2557435,-93.3760951
+41,Chiuahua,3406465,Chihuahua,Mexico,28.6708592,-106.2047046
+42,Durango,1632934,Durango,Mexico,24.0226824,-104.7177654
+43,Guanajuato,5486372,Guanajuato,Mexico,21.0251042,-101.2928998
+44,Chilpancingo,3388768,Guerrero,Mexico,17.5987364,-101.2172158
+45,Pachuca,2665018,Hidalgo,Mexico,20.49454,-100.0436176
+46,Guadalajara,7350682,Jalisco,Mexico,20.8234435,-105.8474649
+47,Toluca,15175862,Estado de México,Mexico,19.3229775,-100.7263697
+48,Morelia,4351037,Michoacán,Mexico,19.1513306,-103.021972
+49,Cuernavaca,1777227,Morelos,Mexico,18.731829,-99.3438787
+50,Tepic,1084979,Nayarit,Mexico,21.8400723,-106.3256835
+51,Monterrey,4653458,Nuevo León,Mexico,25.4638394,-102.0584608
+52,Oaxaca,3801962,Oaxaca,Mexico,17.0812951,-96.7707512
+53,Puebla,5779829,Puebla,Mexico,19.040034,-98.2630059
+54,Querétaro,1827937,Querétaro,Mexico,20.8416002,-100.3802984
+55,Chetumal,1325578,Quintana Roo,Mexico,19.7357632,-90.2480179
+56,San Luis Potosí,2585518,San Luis Potosí,Mexico,22.8101202,-102.5554133
+57,Culiacán,2767761,Sinaloa,Mexico,25.8257003,-108.2230568
+58,Hermosillo,2662480,Sonora,Mexico,29.3766558,-113.9827431
+59,Villahermosa,2238603,Tabasco,Mexico,17.9477483,-93.6802218
+60,Victoria,3268554,Tamaulipas,Mexico,24.9261979,-100.8889034
+61,Tlaxcala,1169936,Tlaxcala,Mexico,19.3165422,-98.2548194
+62,Xalapa,7643194,Veracruz,Mexico,19.790344,-98.3892755
+63,Mérida,1955577,Yucatán,Mexico,21.0788038,-91.0511008
+64,Zacatecas,1490668,Zacatecas,Mexico,23.0676974,104.7923281
+65,Ciudad de México,"8,851,080",Ciudad de México,Mexico,19.39068,-99.2836999

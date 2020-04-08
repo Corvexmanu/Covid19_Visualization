@@ -42,6 +42,67 @@ def create_data():
                 data.append(tempData)
     return pd.concat(data)
 
+def create_Colombia():
+    path = r"C:\\repos\Covid19_Visualization\data\Colombia.csv"
+    tempData = pd.read_csv(path, encoding = "utf-8")
+    change_names = {
+        "Departamento o Distrito":"Province/State",
+        "Atención**":"Status",
+        "País de procedencia": "Procedencia",
+        "Fecha de diagnóstico":"date_file",
+        "Ciudad de ubicación":"City"}
+    tempData.rename(columns=change_names,inplace=True)
+    cols = tempData.select_dtypes(include=[np.object]).columns
+    tempData[cols] = tempData[cols].apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8'))
+
+    Confirmed_Colombia = tempData.groupby('Province/State', as_index=False )['Status'].count()
+    Confirmed_Colombia.rename(columns ={'Status':'Confirmed'}, inplace = True)
+
+    Death_Colombia = tempData[tempData['Status'] == 'Fallecido'].groupby('Province/State', as_index=False)['Status'].count()
+    Death_Colombia.rename(columns ={'Status':'Deaths'}, inplace = True)
+
+    Recovered_Colombia = tempData[tempData['Status'] == 'Recuperado'].groupby('Province/State', as_index=False)['Status'].count()
+    Recovered_Colombia.rename(columns ={'Status':'Recovered'}, inplace = True)
+
+    Colombia = Confirmed_Colombia.merge(Death_Colombia, how = 'left', on = 'Province/State')
+
+    Colombia = Colombia.merge(Recovered_Colombia, how = 'left', on = 'Province/State')
+
+    Colombia['Deaths'].fillna(0, inplace = True) 
+    Colombia['Recovered'].fillna(0, inplace = True) 
+    Colombia['Country/Region'] = 'Colombia'
+    Colombia['date_file'] =  pd.datetime.today().strftime('%Y-%m-%d')
+
+    return Colombia
+
+def create_Mexico():
+
+    path = r"C:\\repos\Covid19_Visualization\data\Mexico.csv"
+    tempData = pd.read_csv(path, skiprows= 2, skipfooter = 1,  index_col=False, encoding = "utf-8", header = None, names = ['Case',"Province/State",'Sexo','Edad','date',"Status",'Procedencia'])
+    cols = tempData.select_dtypes(include=[np.object]).columns
+    tempData[cols] = tempData[cols].apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8'))
+
+    Confirmed_Mexico = tempData.groupby('Province/State', as_index=False )['Status'].count()
+    Confirmed_Mexico.rename(columns ={'Status':'Confirmed'}, inplace = True)
+
+    Death_Mexico = tempData[tempData['Status'] == 'Fallecido'].groupby('Province/State', as_index=False)['Status'].count()
+    Death_Mexico.rename(columns ={'Status':'Deaths'}, inplace = True)
+
+    Recovered_Mexico = tempData[tempData['Status'] == 'Recuperado'].groupby('Province/State', as_index=False)['Status'].count()
+    Recovered_Mexico.rename(columns ={'Status':'Recovered'}, inplace = True)
+
+    Mexico = Confirmed_Mexico.merge(Death_Mexico, how = 'left', on = 'Province/State')
+
+    Mexico = Mexico.merge(Recovered_Mexico, how = 'left', on = 'Province/State')
+
+    Mexico['Deaths'].fillna(0, inplace = True) 
+    Mexico['Recovered'].fillna(0, inplace = True) 
+    Mexico['Country/Region'] = 'Mexico'
+    Mexico['date_file'] =  pd.datetime.today().strftime('%Y-%m-%d')
+
+    Mexico['Province/State'] = Mexico['Province/State'].str.title()
+
+    return Mexico
 
 def filter_country(data,Country):
     if Country == 'World':
@@ -125,9 +186,11 @@ def make_country_table(countryName, country_df):
         "US": 'United States of America',
         "UK": 'United Kingdom'
     }
-    coordinates = pd.read_csv("./data/coordinates.csv")
+    coordinates = pd.read_csv("./data/coordinates.csv", encoding = "ISO-8859-1")
     coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
     coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
+    cols = coordinates.select_dtypes(include=[np.object]).columns
+    coordinates[cols] = coordinates[cols].apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8'))
     coordinates = coordinates[coordinates['Country/Region'] == countryName]
     
     countryTable = pd.merge(countryTable,coordinates, on=['Province/State','Country/Region'])
@@ -165,9 +228,11 @@ def make_europe_table(country_df):
         "US": 'United States of America',
         "UK": 'United Kingdom'
     }
-    coordinates = pd.read_csv("./data/coordinates.csv")
+    coordinates = pd.read_csv("./data/coordinates.csv", encoding = "ISO-8859-1")
     coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
     coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
+    cols = coordinates.select_dtypes(include=[np.object]).columns
+    coordinates[cols] = coordinates[cols].apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8'))
     coordinates = coordinates[coordinates['Country/Region'].isin(europe_list)]    
     europe_table = pd.merge(europe_table,coordinates, on=['Province/State','Country/Region'])
 
@@ -201,10 +266,12 @@ def make_Latin_America_table(country_df):
         "US": 'United States of America',
         "UK": 'United Kingdom'
     }
-    coordinates = pd.read_csv("./data/coordinates.csv")
+    coordinates = pd.read_csv("./data/coordinates.csv", encoding = "ISO-8859-1")
     coordinates['Country/Region'] = coordinates['Country/Region'].map(repeated_names).fillna(coordinates['Country/Region'])
     coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
-    coordinates = coordinates[coordinates['Country/Region'].isin(LatinAmerica_list)]    
+    coordinates = coordinates[coordinates['Country/Region'].isin(LatinAmerica_list)]   
+    cols = coordinates.select_dtypes(include=[np.object]).columns
+    coordinates[cols] = coordinates[cols].apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8')) 
     LatinAmerica_table = pd.merge(LatinAmerica_table,coordinates, on=['Province/State','Country/Region'])
 
     # Suppress SettingWithCopyWarning
@@ -351,7 +418,7 @@ def get_daysOutbreak(df_confirmed):
 
 def get_data_coordinates(country_df):
 
-    coordinates = pd.read_csv("./data/coordinates.csv")
+    coordinates = pd.read_csv("./data/coordinates.csv", encoding = "ISO-8859-1")
     state_names = {
         "Mainland China":"China",
         "US": 'United States of America',
@@ -359,6 +426,9 @@ def get_data_coordinates(country_df):
     }
     coordinates['Country/Region'] = coordinates['Country/Region'].map(state_names).fillna(coordinates['Country/Region'])
     coordinates['Province/State'] = coordinates['Province/State'].fillna(coordinates['Country/Region'])
+
+    cols = coordinates.select_dtypes(include=[np.object]).columns
+    coordinates[cols] = coordinates[cols].apply(lambda x: x.str.normalize('NFKD').str.encode('ascii', errors='ignore').str.decode('utf-8'))
 
     data = country_df.groupby(['Province/State','Country/Region','date_file'], as_index=False).agg({'Confirmed': 'sum', 'Deaths':'sum','Recovered':'sum'})
     data = data.sort_values(by=['date_file'], ascending = False ).reset_index(drop=True)
@@ -402,25 +472,25 @@ def get_data_Canada(CANTable,Canada_derived_virtual_selected_rows, Canada_select
 
     return dff,latitude,longitude,zoom
 
-def get_data_Mainland_China(CNTable,CHN_derived_virtual_selected_rows, CHN_selected_row_ids):
+def get_data_Colombia(ColombiaTable,Colombia_derived_virtual_selected_rows, Colombia_selected_row_ids):
     
-    if CHN_derived_virtual_selected_rows is None:
-        CHN_derived_virtual_selected_rows = []
-    dff = CNTable
-    latitude = 33.471197 if len(CHN_derived_virtual_selected_rows) == 0 else dff.loc[CHN_selected_row_ids[0]].Latitude
-    longitude = 106.206780 if len(CHN_derived_virtual_selected_rows) == 0 else dff.loc[CHN_selected_row_ids[0]].Longitude
-    zoom = 2.5 if len(CHN_derived_virtual_selected_rows) == 0 else 12
+    if Colombia_derived_virtual_selected_rows is None:
+        Colombia_derived_virtual_selected_rows = []
+    dff = ColombiaTable
+    latitude = 4.6097102 if len(Colombia_derived_virtual_selected_rows) == 0 else dff.loc[Colombia_selected_row_ids[0]].Latitude
+    longitude = -74.081749 if len(Colombia_derived_virtual_selected_rows) == 0 else dff.loc[Colombia_selected_row_ids[0]].Longitude
+    zoom = 2.5 if len(Colombia_derived_virtual_selected_rows) == 0 else 12
 
     return dff,latitude,longitude,zoom
 
-def get_data_United_States(USTable,US_derived_virtual_selected_rows, US_selected_row_ids):
+def get_data_Mexico(MexicoTable,Mexico_derived_virtual_selected_rows, Mexico_selected_row_ids):
 
-    if US_derived_virtual_selected_rows is None:
-        US_derived_virtual_selected_rows = []
-    dff = USTable
-    latitude = 40.022092 if len(US_derived_virtual_selected_rows) == 0 else dff.loc[US_selected_row_ids[0]].Latitude
-    longitude = -98.828101 if len(US_derived_virtual_selected_rows) == 0 else dff.loc[US_selected_row_ids[0]].Longitude
-    zoom = 3 if len(US_derived_virtual_selected_rows) == 0 else 12
+    if Mexico_derived_virtual_selected_rows is None:
+        Mexico_derived_virtual_selected_rows = []
+    dff = MexicoTable
+    latitude = 19.39068 if len(Mexico_derived_virtual_selected_rows) == 0 else dff.loc[Mexico_selected_row_ids[0]].Latitude
+    longitude = -99.2837 if len(Mexico_derived_virtual_selected_rows) == 0 else dff.loc[Mexico_selected_row_ids[0]].Longitude
+    zoom = 3 if len(Mexico_derived_virtual_selected_rows) == 0 else 12
 
     return dff,latitude,longitude,zoom
 
